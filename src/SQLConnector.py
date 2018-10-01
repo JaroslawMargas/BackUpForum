@@ -4,26 +4,36 @@ import time
 import sys
 from mysql.connector import errorcode
 
-module_logger = logging.getLogger(__name__)
+moduleLogger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
 
 DB_NAME = 'name' 
+
+TABLES = {}
+TABLES['index'] = (
+    "CREATE TABLE `index` ("
+    "  `id` int(11) NOT NULL AUTO_INCREMENT,"   #PK
+    "  `index` int(11) not NULL,"               #UNIQUE
+    "  `link` varchar(14) NOT NULL,"
+    "  PRIMARY KEY (`id`),UNIQUE KEY(`index`)"
+    ") ENGINE=InnoDB")
 
 class MySql(object):
 
     def __init__(self,logger=None):
         self.logger = logger or logging.getLogger(__name__)
+
             
     def ConnectToServer(self):
         self.logger.info('Connection initialization')
         
-        hostInput = str(raw_input("Please enter host to continue: "))
-        userInput = str(raw_input("Please enter user to continue: "))
-        passwdInput = str(raw_input("Please enter password to continue: "))
+        #hostInput = str(raw_input("Please enter host to continue: "))
+        #userInput = str(raw_input("Please enter user to continue: "))
+       # passwdInput = str(raw_input("Please enter password to continue: "))
         
-        #hostInput = "localhost"
-        #userInput = "root"
-        #passwdInput = ""
+        hostInput = "localhost"
+        userInput = "root"
+        passwdInput = "rootpassword"
         try:
             mydb = mysql.connector.connect(
                 host=hostInput,
@@ -43,9 +53,10 @@ class MySql(object):
    
     def SetCursorExecutor(self,mydb):
         mycursor = mydb.cursor()
+        mycursor.execute("USE {}".format(DB_NAME))
         return mycursor
 
-    def CreateDatabase(self,mycursor):
+    def CreateDB(self,mycursor):
         try:
             mycursor.execute(
             "CREATE DATABASE {} DEFAULT CHARACTER SET 'utf8'".format(DB_NAME))
@@ -65,16 +76,36 @@ class MySql(object):
             elif err.errno == errorcode.ER_DB_DROP_RMDIR:
                 self.logger.debugg()
                 
-    def ConnectToDB(self):
-            self.mydb.connect(database=DB_NAME)
+    def ConnectToDB(self,mydb):
+        try:
+            mydb.connect(database=DB_NAME)
+            self.logger.info("Connected to: "+DB_NAME)
+        except mysql.connector.Error as err:
+            self.logger.debug(err)
             
-    def CloseDB(self):
-        self.mydb.close()
+            
+    def CloseDB(self,mydb):
+        mydb.close()
+    
+    def CreateTable(self,mycursor):
+        for tableName in TABLES:
+            tableDescription = TABLES[tableName]
+            try:
+                mycursor.execute(tableDescription)
+            except mysql.connector.Error as err:
+                if err.errno == errorcode.ER_TABLE_EXISTS_ERROR:
+                    self.logger.debug("Table exist")
+                else:
+                    self.logger.debug(format(err))
+
 
 # test 
 sql = MySql()
 mydb = sql.ConnectToServer() 
 cursor = sql.SetCursorExecutor(mydb)
-sql.CreateDatabase(cursor)
-time.sleep(3)
-sql.DeleteDatabase(cursor)
+#sql.DeleteDatabase(cursor)
+sql.CreateDB(cursor)
+sql.CreateTable(cursor)
+#sql.ConnectToDB(mydb)
+#sql.CloseDB(mydb)
+
