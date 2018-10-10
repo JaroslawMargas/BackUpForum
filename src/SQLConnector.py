@@ -24,16 +24,9 @@ class MySql(object):
         self.logger = logger or logging.getLogger(__name__)
 
             
-    def ConnectToServer(self):
+    def ConnectToServer(self,hostInput,userInput,passwdInput):
         self.logger.info('Connection initialization')
-        
-        #hostInput = str(raw_input("Please enter host to continue: "))
-        #userInput = str(raw_input("Please enter user to continue: "))
-       # passwdInput = str(raw_input("Please enter password to continue: "))
-        
-        hostInput = "localhost"
-        userInput = "root"
-        passwdInput = "rootpassword"
+    
         try:
             mydb = mysql.connector.connect(
                 host=hostInput,
@@ -51,24 +44,27 @@ class MySql(object):
                 self.logger.debug(err)
             sys.exit("Closed connection")
    
-    def SetCursorExecutor(self,mydb):
+    def CreateCursorExecutor(self,mydb):
         mycursor = mydb.cursor()
-        mycursor.execute("USE {}".format(DB_NAME))
+        return mycursor
+    
+    def SetCursorExecutor(self,mycursor,dBName):
+        mycursor.execute("USE {}".format(dBName))
         return mycursor
 
-    def CreateDB(self,mycursor):
+    def CreateDB(self,mycursor,dBName):
         try:
             mycursor.execute(
-            "CREATE DATABASE {} DEFAULT CHARACTER SET 'utf8'".format(DB_NAME))
+            "CREATE DATABASE {} DEFAULT CHARACTER SET 'utf8'".format(dBName))
             self.logger.info('Database created')
         except mysql.connector.Error as err:
             if err.errno == errorcode.ER_DB_CREATE_EXISTS:
                 self.logger.debug("Failed create database: {}".format(err))
                 
         
-    def DeleteDatabase(self,mycursor):
+    def DeleteDatabase(self,mycursor,dBName):
         try:
-            mycursor.execute("DROP DATABASE name")
+            mycursor.execute("DROP DATABASE "+dBName)
             self.logger.info('Database dropped/deleted')
         except mysql.connector.Error as err:
             if err.errno == errorcode.ER_DB_DROP_EXISTS:
@@ -76,10 +72,10 @@ class MySql(object):
             elif err.errno == errorcode.ER_DB_DROP_RMDIR:
                 self.logger.debugg()
                 
-    def ConnectToDB(self,mydb):
+    def ConnectToDB(self,mydb,dBName):
         try:
-            mydb.connect(database=DB_NAME)
-            self.logger.info("Connected to: "+DB_NAME)
+            mydb.connect(database=dBName)
+            self.logger.info("Connected to: "+dBName)
         except mysql.connector.Error as err:
             self.logger.debug(err)
             
@@ -92,6 +88,7 @@ class MySql(object):
             tableDescription = TABLES[tableName]
             try:
                 mycursor.execute(tableDescription)
+                self.logger.info("Create table: "+tableName)
             except mysql.connector.Error as err:
                 if err.errno == errorcode.ER_TABLE_EXISTS_ERROR:
                     self.logger.debug("Table exist")
@@ -101,11 +98,12 @@ class MySql(object):
 
 # test 
 sql = MySql()
-mydb = sql.ConnectToServer() 
-cursor = sql.SetCursorExecutor(mydb)
-#sql.DeleteDatabase(cursor)
-sql.CreateDB(cursor)
+mydb = sql.ConnectToServer('localhost','root','rootpassword') 
+cursor = sql.CreateCursorExecutor(mydb)
+sql.CreateDB(cursor,DB_NAME)
+cursor = sql.SetCursorExecutor(cursor,DB_NAME)
+#sql.DeleteDatabase(cursor,DB_NAME)
 sql.CreateTable(cursor)
-#sql.ConnectToDB(mydb)
+#sql.ConnectToDB(mydb,DB_NAME)
 #sql.CloseDB(mydb)
 
