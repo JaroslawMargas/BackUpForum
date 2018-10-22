@@ -109,7 +109,7 @@ class MySql(object):
     
     def InsertLink(self,mycursor,dBName,tableName,mydb,valList):
         cursor = self.SetCursorExecutor(mycursor, dBName)
-        columnInTableList = self.getColumnsNotIncrement(cursor,DB_NAME,tableName)
+        columnInTableList = self.getColumnsNotIncrement(cursor,dBName,tableName)
         colNames = ''
         for x in range(columnInTableList.__len__()): #
             colNames +=columnInTableList[x]+","
@@ -117,6 +117,7 @@ class MySql(object):
             sql = "INSERT INTO "+tableName+" ("+colNames[0:-1]+") VALUES (%s, %s)" #remove last ","
             cursor.execute(sql, valList)
             mydb.commit()
+            self.logger.info('Data are inserted and committed')
         except mysql.connector.Error as err:
             self.logger.debug(err)
         
@@ -135,6 +136,6 @@ cursor = sql.SetCursorExecutor(cursor,DB_NAME)
 # for itm in columnList:
 #     print itm
     
-sql.InsertLink(cursor,DB_NAME,'main',mydb,("3434","dsgdfgds"))
+sql.InsertLink(cursor,DB_NAME,'main',mydb,("344","dsgdfgds"))
 #sql.ConnectToDB(mydb,DB_NAME)
 sql.CloseDB(mydb)
