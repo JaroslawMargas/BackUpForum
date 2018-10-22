@@ -10,12 +10,12 @@ logging.basicConfig(level=logging.DEBUG)
 DB_NAME = 'name' 
 
 TABLES = {}
-TABLES['index'] = (
-    "CREATE TABLE `index` ("
+TABLES['main'] = (
+    "CREATE TABLE `main` ("
     "  `id` int(11) NOT NULL AUTO_INCREMENT,"   #PK
-    "  `index` int(11) not NULL,"               #UNIQUE
+    "  `number` int(11) not NULL,"               #UNIQUE
     "  `link` varchar(14) NOT NULL,"
-    "  PRIMARY KEY (`id`),UNIQUE KEY(`index`)"
+    "  PRIMARY KEY (`id`),UNIQUE KEY(`number`)"
     ") ENGINE=InnoDB")
 
 class MySql(object):
@@ -95,7 +95,31 @@ class MySql(object):
                 else:
                     self.logger.debug(format(err))
 
-
+    def showTables(self,mycursor,dBName):
+        cursor = self.SetCursorExecutor(mycursor, dBName)
+        cursor.execute("SHOW TABLES")
+        tablesList = [cursor.fetchall()] 
+        return tablesList
+    
+    def getColumnsNotIncrement(self,mycursor,dBName,tableName):
+        cursor = self.SetCursorExecutor(mycursor, dBName)
+        cursor.execute("SHOW COLUMNS FROM "+dBName+"."+tableName+" WHERE EXTRA NOT LIKE '%auto_increment%'")
+        columnLst = [column[0] for column in cursor.fetchall()]
+        return columnLst
+    
+    def InsertLink(self,mycursor,dBName,tableName,mydb,valList):
+        cursor = self.SetCursorExecutor(mycursor, dBName)
+        columnInTableList = self.getColumnsNotIncrement(cursor,DB_NAME,tableName)
+        colNames = ''
+        for x in range(columnInTableList.__len__()): #
+            colNames +=columnInTableList[x]+","
+        try:
+            sql = "INSERT INTO "+tableName+" ("+colNames[0:-1]+") VALUES (%s, %s)" #remove last ","
+            cursor.execute(sql, valList)
+            mydb.commit()
+        except mysql.connector.Error as err:
+            self.logger.debug(err)
+        
 # test 
 sql = MySql()
 mydb = sql.ConnectToServer('localhost','root','rootpassword') 
@@ -103,7 +127,14 @@ cursor = sql.CreateCursorExecutor(mydb)
 sql.CreateDB(cursor,DB_NAME)
 cursor = sql.SetCursorExecutor(cursor,DB_NAME)
 #sql.DeleteDatabase(cursor,DB_NAME)
-sql.CreateTable(cursor)
+#sql.CreateTable(cursor)
+#tableList = sql.showTables(cursor,DB_NAME)
+#for itm in tableList:
+#    print itm
+# columnList = sql.getColumnsNotIncrement(cursor, DB_NAME, 'main')
+# for itm in columnList:
+#     print itm
+    
+sql.InsertLink(cursor,DB_NAME,'main',mydb,("3434","dsgdfgds"))
 #sql.ConnectToDB(mydb,DB_NAME)
-#sql.CloseDB(mydb)
-
+sql.CloseDB(mydb)
