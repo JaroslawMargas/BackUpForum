@@ -13,10 +13,21 @@ TABLES = {}
 TABLES['main'] = (
     "CREATE TABLE `main` ("
     "  `id` int(11) NOT NULL AUTO_INCREMENT,"   #PK
-    "  `number` int(11) not NULL,"               #UNIQUE
-    "  `link` varchar(14) NOT NULL,"
-    "  PRIMARY KEY (`id`),UNIQUE KEY(`number`)"
+    "  `number` varchar(10) not NULL,"               #UNIQUE
+    "  `link` varchar(255) NOT NULL,"
+    "  PRIMARY KEY (`id`)"
+#    "  PRIMARY KEY (`id`),UNIQUE KEY(`number`)"
     ") ENGINE=InnoDB")
+
+TABLES['link'] = (
+    "CREATE TABLE `link` ("
+    "  `id` int(11) NOT NULL AUTO_INCREMENT,"   #PK
+    "  `main_id` varchar(10) not NULL,"               #UNIQUE
+    "  `link` varchar(255) NOT NULL,"
+    "  PRIMARY KEY (`id`)"
+#    "  PRIMARY KEY (`id`),UNIQUE KEY(`number`)"
+    ") ENGINE=InnoDB")
+
 
 class MySql(object):
 
@@ -121,21 +132,21 @@ class MySql(object):
         except mysql.connector.Error as err:
             self.logger.debug(err)
         
-# test 
+
 sql = MySql()
 mydb = sql.ConnectToServer('localhost','root','rootpassword') 
 cursor = sql.CreateCursorExecutor(mydb)
 sql.CreateDB(cursor,DB_NAME)
 cursor = sql.SetCursorExecutor(cursor,DB_NAME)
 #sql.DeleteDatabase(cursor,DB_NAME)
-#sql.CreateTable(cursor)
+sql.CreateTable(cursor)
 #tableList = sql.showTables(cursor,DB_NAME)
 #for itm in tableList:
 #    print itm
 # columnList = sql.getColumnsNotIncrement(cursor, DB_NAME, 'main')
 # for itm in columnList:
 #     print itm
-    
-sql.InsertLink(cursor,DB_NAME,'main',mydb,("344","dsgdfgds"))
+     
+#sql.InsertLink(cursor,DB_NAME,'main',mydb,("344","dsgdfgds"))
 #sql.ConnectToDB(mydb,DB_NAME)
 sql.CloseDB(mydb)
