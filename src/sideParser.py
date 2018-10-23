@@ -5,11 +5,13 @@ from bs4 import BeautifulSoup as BS
 import fileStream
 import numberConverter
 import sys
+import SQLConnector
 
 str_nextLink = "Następny"
 str_advertisement = "Reklama"
 str_logOut = "Wyloguj"
 
+DB_NAME = 'name' 
 
 class SideParser():
 
@@ -17,8 +19,16 @@ class SideParser():
         self.br = mechanize.Browser()
         self.m_count  = 0  #counter for files.
         self.m_nextLink =""  #link for new page 
-        self.m_logOutUser = ""  
+        self.m_logOutUser = ""
+        
+        self.sql = SQLConnector.MySql()
+        self.mydb = self.sql.ConnectToServer('localhost','root','rootpassword') 
+        self.cursor = self.sql.CreateCursorExecutor(self.mydb)
+        self.cursor = self.sql.SetCursorExecutor(self.cursor,DB_NAME)
 
+    def __del__(self):
+        self.sql.CloseDB(self.mydb)
+        
     #need to ignore the robots.txt
     def ignore_robots(self):
         self.br.set_handle_robots(False)
@@ -52,16 +62,18 @@ class SideParser():
     # Create TXT file with fileName (increase name ++) 
     # Open browser and read all links with attribute and value
     # Append each link to file
-    def readLinks_SaveToFile(self,fileName,linkAtrName,linkAtrValue):
+    def readLinks_SaveToFile(self,fileName,linkAtrName,linkAtrValue,SQLtableName):
         streamFile = fileStream.FileStream()
         fileNameExt = streamFile.createTxtFile(fileName)
         
+        self.m_count = 1
         numberLeadZero = numberConverter.NumberConverter()
         for link in self.br.links():     
             for name,value in link.attrs:
                 if name == linkAtrName and value == linkAtrValue:
                     idLeading = numberLeadZero.toLeadingZero(self.m_count)
                     streamFile.appendString(fileNameExt,idLeading+"|"+link.url)
+                    self.sql.InsertLink(self.cursor,DB_NAME,SQLtableName,self.mydb,(fileName,link.url))
                     self.m_count += 1
         del streamFile,numberLeadZero
    
@@ -91,9 +103,13 @@ class SideParser():
     # Open INDEX file and read line by line links.
     # Open each link and read POSTED links. Save it in ID++ file.
     # Link maps is created.
-    def createLinkMap(self,filename,artibuteName,artibuteValue):
-        self.readLinks_SaveToFile('index','class','forumlink')
-        with open(filename, "r") as f:
+    def createLinkMap(self,artibuteName,artibuteValue):
+        
+        numberLeadZero = numberConverter.NumberConverter()
+        idLeading = numberLeadZero.toLeadingZero(self.m_count)
+        self.readLinks_SaveToFile(idLeading,'class','forumlink','main')
+        
+        with open(idLeading+".txt", "r") as f:
             for line in f:
                 str_line = str(line)
                 print str_line
@@ -101,7 +117,7 @@ class SideParser():
                 print idLink
                 print link
                 self.br.open(link)
-                self.readLinks_SaveToFile(idLink,artibuteName,artibuteValue)     
+                self.readLinks_SaveToFile(idLink,artibuteName,artibuteValue,'link')     
         f.close()
                   
     # Check if Post has next page.
@@ -144,6 +160,7 @@ class SideParser():
                                 for user in soup.findAll("span", {"class": "name"}):
                                     if(user.b):
                                         if(user.get_text().encode('utf-8') != str_advertisement):
+                                            
                                             streamFile.appendString(fileName,"Users: "+user.get_text().encode('utf-8'))
                                 for post in soup.findAll("span", {"class": "postbody"}):
                                     #if the post is a script, ignore it
