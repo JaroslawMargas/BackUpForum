@@ -1,13 +1,12 @@
 import logging
 import mysql.connector
-import time
 import sys
 from mysql.connector import errorcode
 
 moduleLogger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
 
-DB_NAME = 'name' 
+#DB_NAME = 'name' 
 
 TABLES = {}
 TABLES['main'] = (
@@ -31,20 +30,28 @@ TABLES['link'] = (
 
 class MySql(object):
 
-    def __init__(self,logger=None):
+    def __init__(self,logger=None, host='',user='',password='',dbName = ''):
         self.logger = logger or logging.getLogger(__name__)
-
+        self.host = host
+        self.user = user
+        self.password = password
+        self.dbName = dbName
+        
+        self.mydB = None
+        self.cursor = None
             
-    def ConnectToServer(self,hostInput,userInput,passwdInput):
+    def OpenSqlConnection(self):
         self.logger.info('Connection initialization')
     
         try:
-            mydb = mysql.connector.connect(
-                host=hostInput,
-                user=userInput,
-                passwd=passwdInput
+            mydB = mysql.connector.connect(
+                host=self.host,
+                user=self.user,
+                passwd=self.password
                 )
-            return mydb
+            self.mydB = mydB
+            self.CreateCursorExecutor()
+            self.SetCursorExecutor()
             
         except mysql.connector.Error as err:
             if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
@@ -54,51 +61,42 @@ class MySql(object):
             else:
                 self.logger.debug(err)
             sys.exit("Closed connection")
-   
-    def CreateCursorExecutor(self,mydb):
-        mycursor = mydb.cursor()
-        return mycursor
     
-    def SetCursorExecutor(self,mycursor,dBName):
-        mycursor.execute("USE {}".format(dBName))
-        return mycursor
+    def CloseConnection(self):
+        self.mydB.close()
+        self.cursor.close()
+        
+    def CreateCursorExecutor(self):
+        self.cursor = self.mydB.cursor()
+    
+    def SetCursorExecutor(self):
+        self.cursor.execute("USE {}".format(self.dbName))
 
-    def CreateDB(self,mycursor,dBName):
+    def CreateDB(self):
         try:
-            mycursor.execute(
-            "CREATE DATABASE {} DEFAULT CHARACTER SET 'utf8'".format(dBName))
+            self.cursor.execute(
+            "CREATE DATABASE {} DEFAULT CHARACTER SET 'utf8'".format(self.dbName))
             self.logger.info('Database created')
         except mysql.connector.Error as err:
             if err.errno == errorcode.ER_DB_CREATE_EXISTS:
                 self.logger.debug("Failed create database: {}".format(err))
                 
         
-    def DeleteDatabase(self,mycursor,dBName):
+    def DeleteDatabase(self):
         try:
-            mycursor.execute("DROP DATABASE "+dBName)
+            self.cursor.execute("DROP DATABASE "+self.dbName)
             self.logger.info('Database dropped/deleted')
         except mysql.connector.Error as err:
             if err.errno == errorcode.ER_DB_DROP_EXISTS:
                 self.logger.debug("Failed drop database: {}".format(err))
             elif err.errno == errorcode.ER_DB_DROP_RMDIR:
                 self.logger.debugg()
-                
-    def ConnectToDB(self,mydb,dBName):
-        try:
-            mydb.connect(database=dBName)
-            self.logger.info("Connected to: "+dBName)
-        except mysql.connector.Error as err:
-            self.logger.debug(err)
-            
-            
-    def CloseDB(self,mydb):
-        mydb.close()
-    
-    def CreateTable(self,mycursor):
+
+    def CreateTable(self):
         for tableName in TABLES:
             tableDescription = TABLES[tableName]
             try:
-                mycursor.execute(tableDescription)
+                self.cursor.execute(tableDescription)
                 self.logger.info("Create table: "+tableName)
             except mysql.connector.Error as err:
                 if err.errno == errorcode.ER_TABLE_EXISTS_ERROR:
@@ -106,47 +104,41 @@ class MySql(object):
                 else:
                     self.logger.debug(format(err))
 
-    def showTables(self,mycursor,dBName):
-        cursor = self.SetCursorExecutor(mycursor, dBName)
-        cursor.execute("SHOW TABLES")
-        tablesList = [cursor.fetchall()] 
+    def showTables(self):
+        self.cursor.execute("SHOW TABLES")
+        tablesList = [self.cursor.fetchall()] 
         return tablesList
     
-    def getColumnsNotIncrement(self,mycursor,dBName,tableName):
-        cursor = self.SetCursorExecutor(mycursor, dBName)
-        cursor.execute("SHOW COLUMNS FROM "+dBName+"."+tableName+" WHERE EXTRA NOT LIKE '%auto_increment%'")
-        columnLst = [column[0] for column in cursor.fetchall()]
+    def getColumnsNotIncrement(self,dBTable):
+        self.cursor.execute("SHOW COLUMNS FROM "+self.dbName+"."+dBTable+" WHERE EXTRA NOT LIKE '%auto_increment%'")
+        columnLst = [column[0] for column in self.cursor.fetchall()]
         return columnLst
     
-    def InsertLink(self,mycursor,dBName,tableName,mydb,valList):
-        cursor = self.SetCursorExecutor(mycursor, dBName)
-        columnInTableList = self.getColumnsNotIncrement(cursor,dBName,tableName)
+    def InsertLink(self,tableName,valList):
+        columnInTableList = self.getColumnsNotIncrement(tableName)
         colNames = ''
         for x in range(columnInTableList.__len__()): #
             colNames +=columnInTableList[x]+","
         try:
             sql = "INSERT INTO "+tableName+" ("+colNames[0:-1]+") VALUES (%s, %s)" #remove last ","
-            cursor.execute(sql, valList)
-            mydb.commit()
+            self.cursor.execute(sql, valList)
+            self.mydB.commit()
             self.logger.info('Data are inserted and committed')
         except mysql.connector.Error as err:
             self.logger.debug(err)
         
 
-sql = MySql()
-mydb = sql.ConnectToServer('localhost','root','rootpassword') 
-cursor = sql.CreateCursorExecutor(mydb)
-sql.CreateDB(cursor,DB_NAME)
-cursor = sql.SetCursorExecutor(cursor,DB_NAME)
-#sql.DeleteDatabase(cursor,DB_NAME)
-sql.CreateTable(cursor)
-#tableList = sql.showTables(cursor,DB_NAME)
-#for itm in tableList:
-#    print itm
-# columnList = sql.getColumnsNotIncrement(cursor, DB_NAME, 'main')
-# for itm in columnList:
+# sql = MySql(host='localhost',user='root',password='rootpassword',dbName = 'name')
+# sql.OpenSqlConnection()
+# sql.CreateTable()
+# #sql.DeleteDatabase()
+# tableList = sql.showTables()
+# 
+# for itm in tableList:
 #     print itm
-     
-#sql.InsertLink(cursor,DB_NAME,'main',mydb,("344","dsgdfgds"))
-#sql.ConnectToDB(mydb,DB_NAME)
-sql.CloseDB(mydb)
+# columnList = sql.getColumnsNotIncrement('link')
+# for itm in columnList:
+#      print itm
+#      
+# #sql.InsertLink('main',("344","dsgdfgds"))
+# sql.CloseConnection()
