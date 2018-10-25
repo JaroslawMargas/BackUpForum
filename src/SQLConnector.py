@@ -11,26 +11,31 @@ logging.basicConfig(level=logging.DEBUG)
 TABLES = {}
 TABLES['main'] = (
     "CREATE TABLE `main` ("
-    "  `id` int(11) NOT NULL AUTO_INCREMENT,"   #PK
-    "  `number` varchar(10) not NULL,"               #UNIQUE
+    "  `id` int(11) NOT NULL AUTO_INCREMENT,"
+    "  `number` varchar(10) not NULL,"
     "  `link` varchar(255) NOT NULL,"
     "  PRIMARY KEY (`id`)"
-#    "  PRIMARY KEY (`id`),UNIQUE KEY(`number`)"
     ") ENGINE=InnoDB")
 
 TABLES['link'] = (
     "CREATE TABLE `link` ("
-    "  `id` int(11) NOT NULL AUTO_INCREMENT,"   #PK
-    "  `main_id` varchar(10) not NULL,"               #UNIQUE
+    "  `id` int(11) NOT NULL AUTO_INCREMENT,"
+    "  `main_id` varchar(10) not NULL,"
     "  `link` varchar(255) NOT NULL,"
     "  PRIMARY KEY (`id`)"
-#    "  PRIMARY KEY (`id`),UNIQUE KEY(`number`)"
+    ") ENGINE=InnoDB")
+
+TABLES['users'] = (
+    "CREATE TABLE `users` ("
+    "  `id` int(11) NOT NULL AUTO_INCREMENT,"
+    "  `name` varchar(255) NOT NULL,"
+    "  PRIMARY KEY (`id`),UNIQUE KEY(`name`)"
     ") ENGINE=InnoDB")
 
 
 class MySql(object):
 
-    def __init__(self, logger=None, host=None, user=None, password=None, dbName = ''):
+    def __init__(self, logger=None, host=None, user=None, password=None, dbName = None):
         self.logger = logger or logging.getLogger(__name__)
         self.host = host
         self.user = user
@@ -40,7 +45,7 @@ class MySql(object):
         self.mydB = None
         self.cursor = None
             
-    def OpenSqlConnection(self):
+    def openSqlConnection(self):
         self.logger.info('Connection initialization')
     
         try:
@@ -50,8 +55,7 @@ class MySql(object):
                 passwd=self.password
                 )
             self.mydB = mydB
-            self.CreateCursorExecutor()
-            self.SetCursorExecutor()
+            self.createCursorExecutor()
             
         except mysql.connector.Error as err:
             if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
@@ -62,17 +66,17 @@ class MySql(object):
                 self.logger.debug(err)
             sys.exit("Closed connection")
     
-    def CloseConnection(self):
+    def closeConnection(self):
         self.mydB.close()
         self.cursor.close()
         
-    def CreateCursorExecutor(self):
+    def createCursorExecutor(self):
         self.cursor = self.mydB.cursor()
     
-    def SetCursorExecutor(self):
+    def setCursorExecutor(self):
         self.cursor.execute("USE {}".format(self.dbName))
 
-    def CreateDB(self):
+    def createDB(self):
         try:
             self.cursor.execute(
             "CREATE DATABASE {} DEFAULT CHARACTER SET 'utf8'".format(self.dbName))
@@ -82,7 +86,7 @@ class MySql(object):
                 self.logger.debug("Failed create database: {}".format(err))
                 
         
-    def DeleteDatabase(self):
+    def deleteDatabase(self):
         try:
             self.cursor.execute("DROP DATABASE "+self.dbName)
             self.logger.info('Database dropped/deleted')
@@ -92,7 +96,7 @@ class MySql(object):
             elif err.errno == errorcode.ER_DB_DROP_RMDIR:
                 self.logger.debugg()
 
-    def CreateTable(self):
+    def createTable(self):
         for tableName in TABLES:
             tableDescription = TABLES[tableName]
             try:
@@ -114,7 +118,7 @@ class MySql(object):
         columnLst = [column[0] for column in self.cursor.fetchall()]
         return columnLst
     
-    def InsertLink(self, tableName, valList):
+    def insertLink(self, tableName, valList):
         columnInTableList = self.getColumnsNotIncrement(tableName)
         colNames = ''
         for x in range(columnInTableList.__len__()): #

@@ -24,14 +24,20 @@ class SideParser():
         self.id = 0 #counter for id in file
         self.nextLink =""  #link for new page 
         self.logOutUser = ""
+
+        self.sql = SQLConnector.MySql(host='localhost',user='root',password='rootpassword',dbName = 'fora')
+        self.sql.openSqlConnection()
+        self.sql.deleteDatabase()
+        self.sql.createDB()
+        self.sql.setCursorExecutor()
+        self.sql.createTable()
+        self.sql.closeConnection()
         
-        self.sql = SQLConnector.MySql(host='localhost',user='root',password='rootpassword',dbName = 'name')
-         
     #need to ignore the robots.txt
-    def ignore_robots(self):
+    def ignoreRobots(self):
         self.br.set_handle_robots(False)
         
-    def open_browser(self,browseAdres):    
+    def openBrowser(self,browseAdres):    
         self.br.open(browseAdres)
         #print all forms
         for f in self.br.forms():
@@ -49,7 +55,7 @@ class SideParser():
             sys.exit("Selecting problem.")
  
     #if form is selected, then enter user and  password
-    def log_user(self):
+    def logUser(self):
         userInput = str(raw_input("Please enter user to continue: "))
         self.br.form['username'] = userInput #userInput
         self.logOutUser = userInput
@@ -62,12 +68,13 @@ class SideParser():
     # Append each link to file
     def readLinks_SaveToFile(self,fileName,linkAtrName,linkAtrValue,SQLtableName):
         streamFile = fileStream.FileStream()
-        fileNameExt = streamFile.createTxtFile(fileName)
+        fileNameExt = streamFile.createTxtFile("Link_"+fileName)
         
 #        self.fileCount = 1
         numberLeadZero = numberConverter.NumberConverter()
     
-        self.sql.OpenSqlConnection()
+        self.sql.openSqlConnection()
+        self.sql.setCursorExecutor()
         
         for link in self.br.links():     
             for name,value in link.attrs:
@@ -75,10 +82,10 @@ class SideParser():
                     idLeading = numberLeadZero.toLeadingZero(self.id)
                     self.logger.info("ReadLinks: {}".format(link.url))
                     streamFile.appendString(fileNameExt,idLeading+"|"+link.url)
-                    self.sql.InsertLink(SQLtableName,(fileName,link.url)) 
+                    self.sql.insertLink(SQLtableName,(fileName,link.url)) 
                     self.id += 1
         del streamFile,numberLeadZero
-        self.sql.CloseConnection()
+        self.sql.closeConnection()
         
         
    
@@ -108,7 +115,7 @@ class SideParser():
     # Open INDEX file and read line by line links.
     # Open each link and read POSTED links. Save it in ID++ file.
     # Link maps is created.
-    def createLinkMap(self,artibuteName,artibuteValue):
+    def createLinkMap(self):
         
         self.fileCount = 0
         self.id = 1
@@ -117,7 +124,7 @@ class SideParser():
         self.readLinks_SaveToFile(idLeading,'class','forumlink','main')
         
         self.id = 1
-        with open(idLeading+".txt", "r") as f:
+        with open("Link_"+idLeading+".txt", "r") as f:
             for line in f:
                 str_line = str(line)
                 #print str_line
@@ -125,7 +132,7 @@ class SideParser():
                 #print idLink
                 #print link
                 self.br.open(link)
-                self.readLinks_SaveToFile(idLink,artibuteName,artibuteValue,'link')     
+                self.readLinks_SaveToFile(idLink,'class','topictitle','link')     
         f.close()
                   
     # Check if Post has next page.
@@ -147,48 +154,55 @@ class SideParser():
     # Save all users 
     # Save all Posts
     # If next page exist repeat it
-    def readPost_CreateFile(self,idLink):
-            with open(idLink+".txt", "r") as fl:
-                        streamFile = fileStream.FileStream()
-                        for line in fl:
-                            str_line = str(line)
-                            #print str_line
-                            idLink,link = str_line.split("|")
-                            self.logger.info("Id Link: {}".format(idLink)) 
-                            self.logger.info("Link: {}".format(link))     
-                            self.nextLink = link 
-                            fileName = streamFile.createTxtFile(idLink)
-                            while True:
-                                self.br.open(self.nextLink)
-                                #open link and read POST
-                                g_response= self.br.response()  #set current response from side.
-                                soup = BS(g_response)  #set instance BeautifulSoup
-                                 
-                                for user in soup.findAll("span", {"class": "name"}):
-                                    if(user.b):
-                                        if(user.get_text().encode('utf-8') != str_advertisement):
-                                            
-                                            streamFile.appendString(fileName,"Users: "+user.get_text().encode('utf-8'))
-                                for post in soup.findAll("span", {"class": "postbody"}):
-                                    #if the post is a script, ignore it
-                                    if(post.script):
-                                            continue
-                                    else:
-                                        streamFile.appendString(fileName,"Posts: "+post.get_text().encode('utf-8'))
-                                        
-                                if(self.checkNextPage(self.nextLink)):
-                                    break
-            fl.close()
+    def readPost_CreateFile(self,idLinkName):
+        
+        self.sql.openSqlConnection()
+        self.sql.setCursorExecutor()
+        
+        with open("Link_"+idLinkName+".txt", "r") as fl:
+                    streamFile = fileStream.FileStream()
+                    for line in fl:
+                        str_line = str(line)
+                        #print str_line
+                        idLink,link = str_line.split("|")
+                        self.logger.info("Id Link: {}".format(idLink)) 
+                        self.logger.info("Link: {}".format(link))     
+                        self.nextLink = link 
+                        fileName = streamFile.createTxtFile("Post_"+idLink)
+                        while True:
+                            self.br.open(self.nextLink)
+                            #open link and read POST
+                            g_response= self.br.response()  #set current response from side.
+                            soup = BS(g_response)  #set instance BeautifulSoup
+                             
+                            for user in soup.findAll("span", {"class": "name"}):
+                                if(user.b):
+                                    if(user.get_text().encode('utf-8') != str_advertisement):
+                                        streamFile.appendString(fileName,"Users: "+user.get_text().encode('utf-8'))          
+                            for post in soup.findAll("span", {"class": "postbody"}):
+                                #if the post is a script, ignore it
+                                if(post.script):
+                                        continue
+                                else:
+                                    streamFile.appendString(fileName,"Posts: "+post.get_text().encode('utf-8'))
+                                    
+                            if(self.checkNextPage(self.nextLink)):
+                                break
+        fl.close()
+        self.sql.closeConnection()
           
     # create a posts map.
-    def createPostsMap(self,filename):
-        with open(filename, "r") as f:
-            for line in f:
+    def createPostsMap(self):
+        self.fileCount = 0
+        numberLeadZero = numberConverter.NumberConverter()
+        fileNameLeading = numberLeadZero.toLeadingZero(self.fileCount)
+        with open("Link_"+fileNameLeading+".txt", "r") as fl:   #open Link_000.txt
+            for line in fl:
                 str_line = str(line)
                 #print str_line
                 idLink,link = str_line.split("|")
-                self.logger.info("Id Link: {}".format(idLink)) 
-                self.logger.info("Link: {}".format(link))
+                self.logger.info("Id Link: {}".format(idLink)) #001
+                self.logger.info("Link: {}".format(link))  #link
                 self.readPost_CreateFile(idLink)
                 
-        f.close()
+        fl.close()
