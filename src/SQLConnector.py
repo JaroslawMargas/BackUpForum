@@ -30,7 +30,7 @@ TABLES['link'] = (
 
 class MySql(object):
 
-    def __init__(self,logger=None, host='',user='',password='',dbName = ''):
+    def __init__(self, logger=None, host=None, user=None, password=None, dbName = ''):
         self.logger = logger or logging.getLogger(__name__)
         self.host = host
         self.user = user
@@ -109,12 +109,12 @@ class MySql(object):
         tablesList = [self.cursor.fetchall()] 
         return tablesList
     
-    def getColumnsNotIncrement(self,dBTable):
+    def getColumnsNotIncrement(self, dBTable):
         self.cursor.execute("SHOW COLUMNS FROM "+self.dbName+"."+dBTable+" WHERE EXTRA NOT LIKE '%auto_increment%'")
         columnLst = [column[0] for column in self.cursor.fetchall()]
         return columnLst
     
-    def InsertLink(self,tableName,valList):
+    def InsertLink(self, tableName, valList):
         columnInTableList = self.getColumnsNotIncrement(tableName)
         colNames = ''
         for x in range(columnInTableList.__len__()): #
