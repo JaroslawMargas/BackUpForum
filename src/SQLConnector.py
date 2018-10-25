@@ -126,19 +126,3 @@ class MySql(object):
             self.logger.info('Data are inserted and committed')
         except mysql.connector.Error as err:
             self.logger.debug(err)
-        
-
-# sql = MySql(host='localhost',user='root',password='rootpassword',dbName = 'name')
-# sql.OpenSqlConnection()
-# sql.CreateTable()
-# #sql.DeleteDatabase()
-# tableList = sql.showTables()
-# 
-# for itm in tableList:
-#     print itm
-# columnList = sql.getColumnsNotIncrement('link')
-# for itm in columnList:
-#      print itm
-#      
-# #sql.InsertLink('main',("344","dsgdfgds"))
-# sql.CloseConnection()
