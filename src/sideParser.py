@@ -20,9 +20,10 @@ class SideParser():
     def __init__ (self,logger=None):
         self.logger = logger or logging.getLogger(__name__)
         self.br = mechanize.Browser()
-        self.m_count  = 0  #counter for files.
-        self.m_nextLink =""  #link for new page 
-        self.m_logOutUser = ""
+        self.fileCount  = 0  #counter for files.
+        self.id = 0 #counter for id in file
+        self.nextLink =""  #link for new page 
+        self.logOutUser = ""
         
         self.sql = SQLConnector.MySql(host='localhost',user='root',password='rootpassword',dbName = 'name')
          
@@ -51,7 +52,7 @@ class SideParser():
     def log_user(self):
         userInput = str(raw_input("Please enter user to continue: "))
         self.br.form['username'] = userInput #userInput
-        self.m_logOutUser = userInput
+        self.logOutUser = userInput
         password = str(raw_input("Please enter password to continue: "))
         self.br.form['password'] = password #password
         self.br.submit()
@@ -63,7 +64,7 @@ class SideParser():
         streamFile = fileStream.FileStream()
         fileNameExt = streamFile.createTxtFile(fileName)
         
-        self.m_count = 1
+#        self.fileCount = 1
         numberLeadZero = numberConverter.NumberConverter()
     
         self.sql.OpenSqlConnection()
@@ -71,18 +72,18 @@ class SideParser():
         for link in self.br.links():     
             for name,value in link.attrs:
                 if name == linkAtrName and value == linkAtrValue:
-                    idLeading = numberLeadZero.toLeadingZero(self.m_count)
+                    idLeading = numberLeadZero.toLeadingZero(self.id)
                     self.logger.info("ReadLinks: {}".format(link.url))
                     streamFile.appendString(fileNameExt,idLeading+"|"+link.url)
                     self.sql.InsertLink(SQLtableName,(fileName,link.url)) 
-                    self.m_count += 1
+                    self.id += 1
         del streamFile,numberLeadZero
         self.sql.CloseConnection()
         
         
    
-    def getCounter(self):
-        return self.m_count
+    def getFileCounter(self):
+        return self.fileCount
     
     def printCurrentHtml(self):
         g_response= self.br.response()
@@ -95,7 +96,7 @@ class SideParser():
 
            
     def logOut(self):
-        target_text=str_logOut+' [ '+self.m_logOutUser+' ][IMG]'+str_logOut+' [ '+self.m_logOutUser+' ]'
+        target_text=str_logOut+' [ '+self.logOutUser+' ][IMG]'+str_logOut+' [ '+self.logOutUser+' ]'
         for link in self.br.links():
             if link.text == target_text:
                 self.logger.info("The user is log out")        
@@ -109,10 +110,13 @@ class SideParser():
     # Link maps is created.
     def createLinkMap(self,artibuteName,artibuteValue):
         
+        self.fileCount = 0
+        self.id = 1
         numberLeadZero = numberConverter.NumberConverter()
-        idLeading = numberLeadZero.toLeadingZero(self.m_count)
+        idLeading = numberLeadZero.toLeadingZero(self.fileCount)
         self.readLinks_SaveToFile(idLeading,'class','forumlink','main')
         
+        self.id = 1
         with open(idLeading+".txt", "r") as f:
             for line in f:
                 str_line = str(line)
@@ -133,7 +137,7 @@ class SideParser():
         for post in soup.findAll("span", {"class": "nav"}):
             for a in post.findAll('a'):
                 if(a.get_text().encode('utf-8') == str_nextLink):
-                    self.m_nextLink = a.get('href')
+                    self.nextLink = a.get('href')
                     checker = True
         if (checker == None):
             return True
@@ -152,10 +156,10 @@ class SideParser():
                             idLink,link = str_line.split("|")
                             self.logger.info("Id Link: {}".format(idLink)) 
                             self.logger.info("Link: {}".format(link))     
-                            self.m_nextLink = link 
+                            self.nextLink = link 
                             fileName = streamFile.createTxtFile(idLink)
                             while True:
-                                self.br.open(self.m_nextLink)
+                                self.br.open(self.nextLink)
                                 #open link and read POST
                                 g_response= self.br.response()  #set current response from side.
                                 soup = BS(g_response)  #set instance BeautifulSoup
@@ -172,7 +176,7 @@ class SideParser():
                                     else:
                                         streamFile.appendString(fileName,"Posts: "+post.get_text().encode('utf-8'))
                                         
-                                if(self.checkNextPage(self.m_nextLink)):
+                                if(self.checkNextPage(self.nextLink)):
                                     break
             fl.close()
           
