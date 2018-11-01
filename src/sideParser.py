@@ -108,7 +108,7 @@ class SideParser():
     def checkNextPage(self,link):
         self.br.open(link)   #open idLink.txt
         g_response= self.br.response()  #set current response from side.
-        soup = BS(g_response)  #set instance BeautifulSoup
+        soup = BS(g_response,"html5lib")  #set instance BeautifulSoup
         checker = None
         for post in soup.findAll("span", {"class": "nav"}):
             for a in post.findAll('a'):
@@ -139,7 +139,7 @@ class SideParser():
                                 self.br.open(self.m_nextLink)
                                 #open link and read POST
                                 g_response= self.br.response()  #set current response from side.
-                                soup = BS(g_response)  #set instance BeautifulSoup
+                                soup = BS(g_response,"html5lib")  #set instance BeautifulSoup
                                  
                                 for user in soup.findAll("span", {"class": "name"}):
                                     if(user.b):
