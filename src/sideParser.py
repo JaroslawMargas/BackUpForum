@@ -32,7 +32,7 @@ class SideParser():
         self.sql.setCursorExecutor()
         self.sql.createTable()
         self.sql.closeConnection()
-        
+    
     #need to ignore the robots.txt
     def ignoreRobots(self):
         self.br.set_handle_robots(False)
@@ -42,6 +42,7 @@ class SideParser():
         #print all forms
         for f in self.br.forms():
                 self.logger.info(format(f))
+        return True
     
     # example form
     # <form action="login.php" method="post" target="_top">
@@ -49,10 +50,11 @@ class SideParser():
 
     #find and select atr:action="login.php"
     def selectForm(self,attribute,atrValue):
-        try:
-            self.br.select_form(predicate=lambda frm: attribute in frm.attrs and frm.attrs[attribute] == atrValue)
-        except:
-            sys.exit("Selecting problem.")
+        if(self.br.select_form(predicate=lambda frm: attribute in frm.attrs and frm.attrs[attribute] == atrValue)):
+            self.logger.debug("Error Form Selection")
+            return True
+        else:
+            self.logger.info("Form Selected")
  
     #if form is selected, then enter user and  password
     def logUser(self):
@@ -72,9 +74,14 @@ class SideParser():
         
 #        self.fileCount = 1
         numberLeadZero = numberConverter.NumberConverter()
-    
-        self.sql.openSqlConnection()
-        self.sql.setCursorExecutor()
+
+
+        try:
+            self.sql.openSqlConnection()
+            self.sql.setCursorExecutor()
+        except:
+            self.logger.debug("SQL Connection error.")
+
         
         for link in self.br.links():     
             for name,value in link.attrs:
@@ -82,10 +89,16 @@ class SideParser():
                     idLeading = numberLeadZero.toLeadingZero(self.id)
                     self.logger.info("ReadLinks: {}".format(link.url))
                     streamFile.appendString(fileNameExt,idLeading+"|"+link.url)
-                    self.sql.insertLink(SQLtableName,(fileName,link.url)) 
+
+
+                    self.sql.insertLink(SQLtableName,[fileName,link.url])
                     self.id += 1
         del streamFile,numberLeadZero
-        self.sql.closeConnection()
+        try:
+            self.sql.closeConnection()
+        except:
+            self.logger.debug("SQL Close connection error.")
+
         
         
    
@@ -106,9 +119,15 @@ class SideParser():
         target_text=str_logOut+' [ '+self.logOutUser+' ][IMG]'+str_logOut+' [ '+self.logOutUser+' ]'
         for link in self.br.links():
             if link.text == target_text:
-                self.logger.info("The user is log out")        
+#                 self.logger.info("The user is log out")        
                 break
-        self.br.follow_link(link)
+            
+        if(self.br.follow_link(link)):
+            self.logger.info("User log out")
+        else:
+            self.logger.debug("User log out error")
+            
+                
         self.logger.info("URL: {}".format(self.br.geturl()))
     
     # Create TXT file with name INDEX and read main links. Save it in file.
@@ -139,7 +158,7 @@ class SideParser():
     def checkNextPage(self,link):
         self.br.open(link)   #open idLink.txt
         g_response= self.br.response()  #set current response from side.
-        soup = BS(g_response)  #set instance BeautifulSoup
+        soup = BS(g_response,"html5lib")  #set instance BeautifulSoup
         checker = None
         for post in soup.findAll("span", {"class": "nav"}):
             for a in post.findAll('a'):
@@ -158,7 +177,6 @@ class SideParser():
         
         self.sql.openSqlConnection()
         self.sql.setCursorExecutor()
-        
         with open("Link_"+idLinkName+".txt", "r") as fl:
                     streamFile = fileStream.FileStream()
                     for line in fl:
@@ -173,12 +191,22 @@ class SideParser():
                             self.br.open(self.nextLink)
                             #open link and read POST
                             g_response= self.br.response()  #set current response from side.
-                            soup = BS(g_response)  #set instance BeautifulSoup
+
+
+                            soup = BS(g_response,"html5lib")  #set instance BeautifulSoup
+
                              
                             for user in soup.findAll("span", {"class": "name"}):
                                 if(user.b):
                                     if(user.get_text().encode('utf-8') != str_advertisement):
+
                                         streamFile.appendString(fileName,"Users: "+user.get_text().encode('utf-8'))          
+
+                  
+                                        
+                                        self.sql.insertUser("users",[user.get_text().encode('utf-8')])
+                                                  
+
                             for post in soup.findAll("span", {"class": "postbody"}):
                                 #if the post is a script, ignore it
                                 if(post.script):

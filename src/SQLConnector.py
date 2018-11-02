@@ -28,7 +28,7 @@ TABLES['link'] = (
 TABLES['users'] = (
     "CREATE TABLE `users` ("
     "  `id` int(11) NOT NULL AUTO_INCREMENT,"
-    "  `name` varchar(255) NOT NULL,"
+    "  `name` varchar(255) NOT NULL,
     "  PRIMARY KEY (`id`),UNIQUE KEY(`name`)"
     ") ENGINE=InnoDB")
 
@@ -44,7 +44,22 @@ class MySql(object):
         
         self.mydB = None
         self.cursor = None
-            
+    
+    def dBConfiguration(self):
+        
+        try:
+            self.openSqlConnection()
+            self.deleteDatabase()
+            self.createDB()
+            self.setCursorExecutor()
+            self.createTable()
+            self.closeConnection()
+        except:
+            self.logger.debug("Error while Database configuration")
+        else:
+            self.logger.debug("Database OK")
+           
+
     def openSqlConnection(self):
         self.logger.info('Connection initialization')
     
@@ -64,7 +79,7 @@ class MySql(object):
                 self.logger.debug("Database does not exist: {}".format(err))
             else:
                 self.logger.debug(err)
-            sys.exit("Closed connection")
+            #sys.exit("Closed connection")
     
     def closeConnection(self):
         self.mydB.close()
@@ -126,6 +141,18 @@ class MySql(object):
         try:
             sql = "INSERT INTO "+tableName+" ("+colNames[0:-1]+") VALUES (%s, %s)" #remove last ","
             self.cursor.execute(sql, valList)
+            self.mydB.commit()
+            self.logger.info('Data are inserted and committed')
+        except mysql.connector.Error as err:
+            self.logger.debug(err)
+            
+    def insertUser(self, tableName, valueList):
+        columnInTableList = self.getColumnsNotIncrement(tableName)
+        try:
+            #sql = "INSERT INTO "+tableName+" ("+str(columnInTableList[0])+") VALUES (%s)" #remove last ","
+            #tmpList = [value]
+            sql = "INSERT IGNORE INTO users ("+columnInTableList[0]+") VALUES (%s)"
+            self.cursor.execute(sql,valueList)
             self.mydB.commit()
             self.logger.info('Data are inserted and committed')
         except mysql.connector.Error as err:
