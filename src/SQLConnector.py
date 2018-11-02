@@ -28,8 +28,8 @@ TABLES['link'] = (
 TABLES['users'] = (
     "CREATE TABLE `users` ("
     "  `id` int(11) NOT NULL AUTO_INCREMENT,"
-    "  `name` varchar(255) NOT NULL,
-    "  PRIMARY KEY (`id`),UNIQUE KEY(`name`)"
+    "  `name` varchar(255) NOT NULL,"
+    "  PRIMARY KEY (`id`),UNIQUE(`name`)"
     ") ENGINE=InnoDB")
 
 
@@ -59,7 +59,6 @@ class MySql(object):
         else:
             self.logger.debug("Database OK")
            
-
     def openSqlConnection(self):
         self.logger.info('Connection initialization')
     

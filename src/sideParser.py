@@ -24,15 +24,10 @@ class SideParser():
         self.id = 0 #counter for id in file
         self.nextLink =""  #link for new page 
         self.logOutUser = ""
-
-        self.sql = SQLConnector.MySql(host='localhost',user='root',password='rootpassword',dbName = 'fora')
-        self.sql.openSqlConnection()
-        self.sql.deleteDatabase()
-        self.sql.createDB()
-        self.sql.setCursorExecutor()
-        self.sql.createTable()
-        self.sql.closeConnection()
-    
+        
+        self.sql = SQLConnector.MySql(host='localhost',user='username',password='userpassword',dbName = 'fora')
+        self.sql.dBConfiguration()
+            
     #need to ignore the robots.txt
     def ignoreRobots(self):
         self.br.set_handle_robots(False)
@@ -74,14 +69,11 @@ class SideParser():
         
 #        self.fileCount = 1
         numberLeadZero = numberConverter.NumberConverter()
-
-
         try:
             self.sql.openSqlConnection()
             self.sql.setCursorExecutor()
         except:
             self.logger.debug("SQL Connection error.")
-
         
         for link in self.br.links():     
             for name,value in link.attrs:
@@ -89,8 +81,6 @@ class SideParser():
                     idLeading = numberLeadZero.toLeadingZero(self.id)
                     self.logger.info("ReadLinks: {}".format(link.url))
                     streamFile.appendString(fileNameExt,idLeading+"|"+link.url)
-
-
                     self.sql.insertLink(SQLtableName,[fileName,link.url])
                     self.id += 1
         del streamFile,numberLeadZero
@@ -98,7 +88,6 @@ class SideParser():
             self.sql.closeConnection()
         except:
             self.logger.debug("SQL Close connection error.")
-
         
         
    
@@ -177,6 +166,8 @@ class SideParser():
         
         self.sql.openSqlConnection()
         self.sql.setCursorExecutor()
+
+
         with open("Link_"+idLinkName+".txt", "r") as fl:
                     streamFile = fileStream.FileStream()
                     for line in fl:
@@ -191,22 +182,15 @@ class SideParser():
                             self.br.open(self.nextLink)
                             #open link and read POST
                             g_response= self.br.response()  #set current response from side.
-
-
                             soup = BS(g_response,"html5lib")  #set instance BeautifulSoup
-
                              
                             for user in soup.findAll("span", {"class": "name"}):
                                 if(user.b):
                                     if(user.get_text().encode('utf-8') != str_advertisement):
-
-                                        streamFile.appendString(fileName,"Users: "+user.get_text().encode('utf-8'))          
-
-                  
+                                        streamFile.appendString(fileName,"Users: "+user.get_text().encode('utf-8'))
                                         
                                         self.sql.insertUser("users",[user.get_text().encode('utf-8')])
                                                   
-
                             for post in soup.findAll("span", {"class": "postbody"}):
                                 #if the post is a script, ignore it
                                 if(post.script):
@@ -218,6 +202,7 @@ class SideParser():
                                 break
         fl.close()
         self.sql.closeConnection()
+        self.logger.debug("SQL Connection error")
           
     # create a posts map.
     def createPostsMap(self):

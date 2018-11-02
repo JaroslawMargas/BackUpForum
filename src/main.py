@@ -5,7 +5,7 @@ if __name__ == '__main__':
 
 side_event = sideParser.SideParser()
 side_event.ignoreRobots()
-side_event.openBrowser('http://www.EXAMPLE.fora.pl/login.php')
+side_event.openBrowser('http://www.stanislawowska.fora.pl/login.php')
 side_event.selectForm("action","login.php")
 side_event.logUser()
 side_event.createLinkMap()
